@@ -110,9 +110,13 @@ func (h *HashMap) remove(key int) *DLinkNode {
 }
 
 func NewHashMap(capacity int) *HashMap {
+	heads := make([]*HashMapNode, 31)
+	for i := range heads {
+		heads[i] = &HashMapNode{}
+	}
 	return &HashMap{
 		capacity: capacity,
-		heads:    make([]*HashMapNode, 31),
+		heads:    heads,
 		size:     0,
 	}
 }
