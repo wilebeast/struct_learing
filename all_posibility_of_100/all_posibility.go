@@ -40,7 +40,6 @@ func deepSearch(result *[]int, index int) {
 		}
 
 		if sum == 100 {
-
 			temp := make([]int, len(*result))
 			copy(temp, *result)
 			results = append(results, temp)
