@@ -1,4 +1,4 @@
-package first_version
+package increasing_triple
 
 func deepSearch(triplet *[]int, tripletNum int, index int, nums *[]int) bool {
 	if tripletNum == 3 {

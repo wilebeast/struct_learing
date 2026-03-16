@@ -1,4 +1,4 @@
-package first_version
+package max_length_unduplicate_str
 
 import "testing"
 

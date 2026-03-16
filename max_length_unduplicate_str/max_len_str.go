@@ -1,4 +1,4 @@
-package first_version
+package max_length_unduplicate_str
 
 func MaxLenStr(str []byte) {
 	indexs := make([][]int, 0, 256)
