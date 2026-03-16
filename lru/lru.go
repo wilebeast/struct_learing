@@ -1,4 +1,4 @@
-package first_version
+package lru
 
 type CacheNode struct {
 	key   int
@@ -39,7 +39,7 @@ func (l *DLinkList) insertToHead(key, value int) {
 
 	node.pre = l.headNode
 	node.next = l.headNode.next
-	l.headNode = node
+	node.pre.next = node
 	node.next.pre = node
 	return
 }
