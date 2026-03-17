@@ -1,7 +1,7 @@
-package first_version
+package merge_unsorted_num
 
-// Function to merge two halves and count inversions
-func countAndMerge(arr *[]int, left int, mid int, right int) int {
+// mergeAndCountSplitInversions merges two sorted halves and counts cross-half inversions.
+func mergeAndCountSplitInversions(arr *[]int, left int, mid int, right int) int {
 	// Create temporary arrays for left and right
 	n1 := mid - left + 1
 	n2 := right - mid
@@ -47,19 +47,19 @@ func countAndMerge(arr *[]int, left int, mid int, right int) int {
 	return inversionCount
 }
 
-// Function to count inversions using divide and conquer
-func countInversions(arr *[]int, left int, right int) int {
+// sortAndCountInversions sorts the range and returns its inversion count.
+func sortAndCountInversions(arr *[]int, left int, right int) int {
 	if left >= right {
 		return 0
 	}
 	mid := left + (right-left)/2
 
 	// Count inversions in left half, right half, and during merge
-	inversions := countInversions(arr, left, mid) +
-		countInversions(arr, mid+1, right)
+	inversions := sortAndCountInversions(arr, left, mid) +
+		sortAndCountInversions(arr, mid+1, right)
 
 	// Merge the two halves and count inversions during merge
-	inversions = inversions + countAndMerge(arr, left, mid, right)
+	inversions = inversions + mergeAndCountSplitInversions(arr, left, mid, right)
 
 	return inversions
 }
