@@ -7,6 +7,11 @@ type Point struct {
 	y int
 }
 
+func enqueueAndMarkVisited(queue *list.List, visited *[][]bool, point Point) {
+	queue.PushBack(point)
+	(*visited)[point.x][point.y] = true
+}
+
 func solveMaze(maze [][]int, start, end Point) (int, []Point) {
 	return bfs(maze, start, end)
 }
@@ -39,9 +44,7 @@ func bfs(maze [][]int, start, end Point) (int, []Point) {
 	}
 
 	queue := list.New()
-	queue.PushBack(start)
-
-	visited[start.x][start.y] = true
+	enqueueAndMarkVisited(queue, &visited, start)
 	for queue.Len() > 0 {
 		cur := queue.Front().Value.(Point)
 		queue.Remove(queue.Front())
@@ -62,8 +65,7 @@ func bfs(maze [][]int, start, end Point) (int, []Point) {
 		}
 		for _, next := range nextPoints {
 			if IsValidPoint(&maze, next) && !IsVisited(&visited, next) {
-				queue.PushBack(next)
-				visited[next.x][next.y] = true
+				enqueueAndMarkVisited(queue, &visited, next)
 				prePoints[next.x][next.y] = cur
 			}
 		}
