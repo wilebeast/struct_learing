@@ -95,7 +95,7 @@ var blacklistExamples = []blacklistExample{
 const (
 	blacklistActionAdd    = "add"
 	blacklistActionDelete = "delete"
-	blacklistInterval     = 15 * time.Minute
+	defaultInterval       = 15 * time.Minute
 )
 
 func encodePassword(password string) string {
@@ -248,6 +248,7 @@ func main() {
 	username := flag.String("username", "admin", "router username")
 	password := flag.String("password", "", "router admin password")
 	passwordIsEncoded := flag.Bool("password-is-encoded", false, "treat --password as already encoded")
+	interval := flag.Duration("interval", defaultInterval, "time to keep devices in or out of blacklist per phase")
 	timeout := flag.Duration("timeout", 10*time.Second, "HTTP timeout")
 	flag.Parse()
 
@@ -287,8 +288,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("[%s] devices are now in blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), blacklistInterval)
-		time.Sleep(blacklistInterval)
+		fmt.Printf("[%s] devices are now in blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
+		time.Sleep(*interval)
 
 		stok, err = login(client, base, *username, *password, *passwordIsEncoded)
 		if err != nil {
@@ -302,7 +303,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("[%s] devices are now out of blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), blacklistInterval)
-		time.Sleep(blacklistInterval)
+		fmt.Printf("[%s] devices are now out of blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
+		time.Sleep(*interval)
 	}
 }
