@@ -96,6 +96,7 @@ const (
 	blacklistActionAdd    = "add"
 	blacklistActionDelete = "delete"
 	defaultInterval       = 15 * time.Minute
+	retryInterval         = 2 * time.Minute
 )
 
 func encodePassword(password string) string {
@@ -278,14 +279,18 @@ func main() {
 	for {
 		stok, err := login(client, base, *username, *password, *passwordIsEncoded)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "[%s] %v\n", time.Now().Format(time.RFC3339), err)
+			fmt.Fprintf(os.Stderr, "[%s] retrying in %s\n", time.Now().Format(time.RFC3339), retryInterval)
+			time.Sleep(retryInterval)
+			continue
 		}
 		fmt.Printf("[%s] stok=%s\n", time.Now().Format(time.RFC3339), stok)
 
 		if err := applyBlacklistAction(client, base, stok, blacklistActionDelete); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "[%s] %v\n", time.Now().Format(time.RFC3339), err)
+			fmt.Fprintf(os.Stderr, "[%s] retrying in %s\n", time.Now().Format(time.RFC3339), retryInterval)
+			time.Sleep(retryInterval)
+			continue
 		}
 
 		fmt.Printf("[%s] devices are now out of blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
@@ -293,14 +298,18 @@ func main() {
 
 		stok, err = login(client, base, *username, *password, *passwordIsEncoded)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "[%s] %v\n", time.Now().Format(time.RFC3339), err)
+			fmt.Fprintf(os.Stderr, "[%s] retrying in %s\n", time.Now().Format(time.RFC3339), retryInterval)
+			time.Sleep(retryInterval)
+			continue
 		}
 		fmt.Printf("[%s] stok=%s\n", time.Now().Format(time.RFC3339), stok)
 
 		if err := applyBlacklistAction(client, base, stok, blacklistActionAdd); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "[%s] %v\n", time.Now().Format(time.RFC3339), err)
+			fmt.Fprintf(os.Stderr, "[%s] retrying in %s\n", time.Now().Format(time.RFC3339), retryInterval)
+			time.Sleep(retryInterval)
+			continue
 		}
 
 		fmt.Printf("[%s] devices are now in blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
