@@ -283,12 +283,12 @@ func main() {
 		}
 		fmt.Printf("[%s] stok=%s\n", time.Now().Format(time.RFC3339), stok)
 
-		if err := applyBlacklistAction(client, base, stok, blacklistActionAdd); err != nil {
+		if err := applyBlacklistAction(client, base, stok, blacklistActionDelete); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("[%s] devices are now in blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
+		fmt.Printf("[%s] devices are now out of blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
 		time.Sleep(*interval)
 
 		stok, err = login(client, base, *username, *password, *passwordIsEncoded)
@@ -298,12 +298,12 @@ func main() {
 		}
 		fmt.Printf("[%s] stok=%s\n", time.Now().Format(time.RFC3339), stok)
 
-		if err := applyBlacklistAction(client, base, stok, blacklistActionDelete); err != nil {
+		if err := applyBlacklistAction(client, base, stok, blacklistActionAdd); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("[%s] devices are now out of blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
+		fmt.Printf("[%s] devices are now in blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), *interval)
 		time.Sleep(*interval)
 	}
 }
