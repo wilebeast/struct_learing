@@ -95,6 +95,7 @@ var blacklistExamples = []blacklistExample{
 const (
 	blacklistActionAdd    = "add"
 	blacklistActionDelete = "delete"
+	blacklistInterval     = 15 * time.Minute
 )
 
 func encodePassword(password string) string {
@@ -162,6 +163,43 @@ func postJSON(client *http.Client, targetURL string, payload any, headers map[st
 	return respBody, resp.StatusCode, nil
 }
 
+func login(client *http.Client, baseURL, username, password string, passwordIsEncoded bool) (string, error) {
+	loginPassword := password
+	if !passwordIsEncoded {
+		loginPassword = password
+	}
+
+	loginReq := loginRequest{
+		Method: "do",
+		Login: loginPayload{
+			Username: username,
+			Password: loginPassword,
+		},
+	}
+
+	loginBody, statusCode, err := postJSON(client, baseURL+"/", loginReq, requestHeaders(baseURL))
+	if err != nil {
+		return "", fmt.Errorf("login request failed: %w", err)
+	}
+
+	fmt.Printf("[%s] login HTTP %d\n", time.Now().Format(time.RFC3339), statusCode)
+	fmt.Println(string(loginBody))
+
+	var loginResp loginResponse
+	if err := json.Unmarshal(loginBody, &loginResp); err != nil {
+		return "", fmt.Errorf("parse login response failed: %w", err)
+	}
+
+	if loginResp.ErrorCode != 0 {
+		return "", fmt.Errorf("login failed: error_code=%d", loginResp.ErrorCode)
+	}
+	if loginResp.Stok == "" {
+		return "", fmt.Errorf("login succeeded but no stok was returned")
+	}
+
+	return loginResp.Stok, nil
+}
+
 func blacklistName(mac string) string {
 	replacer := strings.NewReplacer("-", "", ":", "", ".", "")
 	return "black_" + strings.ToLower(replacer.Replace(mac))
@@ -189,6 +227,22 @@ func buildBlacklistRequest(example blacklistExample, action string) blacklistReq
 	return request
 }
 
+func applyBlacklistAction(client *http.Client, baseURL, stok, action string) error {
+	blockURL := fmt.Sprintf("%s/stok=%s/ds", baseURL, stok)
+
+	for _, example := range blacklistExamples {
+		body, status, err := postJSON(client, blockURL, buildBlacklistRequest(example, action), requestHeaders(baseURL))
+		if err != nil {
+			return fmt.Errorf("%s %s failed: %w", action, example.Name, err)
+		}
+
+		fmt.Printf("[%s] %s %s HTTP %d\n", time.Now().Format(time.RFC3339), action, example.Name, status)
+		fmt.Println(string(body))
+	}
+
+	return nil
+}
+
 func main() {
 	baseURL := flag.String("base-url", "http://192.168.2.1", "router base URL")
 	username := flag.String("username", "admin", "router username")
@@ -214,68 +268,41 @@ func main() {
 	}
 
 	base := strings.TrimRight(*baseURL, "/")
-	loginPassword := *password
-	if !*passwordIsEncoded {
-		loginPassword = *password
-	}
-
-	loginReq := loginRequest{
-		Method: "do",
-		Login: loginPayload{
-			Username: *username,
-			Password: loginPassword,
-		},
-	}
-
-	loginBody, statusCode, err := postJSON(client, base+"/", loginReq, requestHeaders(base))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "login request failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("login HTTP %d\n", statusCode)
-	fmt.Println(string(loginBody))
-
-	var loginResp loginResponse
-	if err := json.Unmarshal(loginBody, &loginResp); err != nil {
-		fmt.Fprintf(os.Stderr, "parse login response failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	if loginResp.ErrorCode != 0 {
-		fmt.Fprintf(os.Stderr, "login failed: error_code=%d\n", loginResp.ErrorCode)
-		os.Exit(1)
-	}
-
-	if loginResp.Stok == "" {
-		fmt.Fprintln(os.Stderr, "login succeeded but no stok was returned")
-		os.Exit(1)
-	}
-
-	fmt.Printf("stok=%s\n", loginResp.Stok)
 
 	if len(blacklistExamples) == 0 {
 		fmt.Fprintln(os.Stderr, "no blacklist examples configured")
 		os.Exit(1)
 	}
-	example := blacklistExamples[0]
 
-	blockURL := fmt.Sprintf("%s/stok=%s/ds", base, loginResp.Stok)
-	blockBody, blockStatus, err := postJSON(client, blockURL, buildBlacklistRequest(example, blacklistActionAdd), requestHeaders(base))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "blacklist request failed: %v\n", err)
-		os.Exit(1)
+	for {
+		stok, err := login(client, base, *username, *password, *passwordIsEncoded)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Printf("[%s] stok=%s\n", time.Now().Format(time.RFC3339), stok)
+
+		if err := applyBlacklistAction(client, base, stok, blacklistActionAdd); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("[%s] devices are now in blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), blacklistInterval)
+		time.Sleep(blacklistInterval)
+
+		stok, err = login(client, base, *username, *password, *passwordIsEncoded)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Printf("[%s] stok=%s\n", time.Now().Format(time.RFC3339), stok)
+
+		if err := applyBlacklistAction(client, base, stok, blacklistActionDelete); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("[%s] devices are now out of blacklist, sleeping for %s\n", time.Now().Format(time.RFC3339), blacklistInterval)
+		time.Sleep(blacklistInterval)
 	}
-
-	fmt.Printf("blacklist HTTP %d\n", blockStatus)
-	fmt.Println(string(blockBody))
-
-	removeBody, removeStatus, err := postJSON(client, blockURL, buildBlacklistRequest(example, blacklistActionDelete), requestHeaders(base))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "remove blacklist request failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("remove blacklist HTTP %d\n", removeStatus)
-	fmt.Println(string(removeBody))
 }
